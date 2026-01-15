@@ -1,10 +1,13 @@
+Setup Used:
+VS Code + Cursor AI + ChatGPT for planning and debugging.
+
 ## Webhook Service (FastAPI)
 
 This project is a production-style FastAPI backend for receiving webhook messages, storing them idempotently in SQLite, and exposing APIs for message listing and basic analytics.
 
 It includes HMAC-SHA256 signature validation, structured JSON logging, health checks, optional Prometheus metrics, and full Docker support.
 
-### Message Schema
+## Message Schema
 
 POST /webhook expects the following JSON body:
 
@@ -19,34 +22,34 @@ POST /webhook expects the following JSON body:
 ```
 
 **Validations:**
-	•	message_id: must be a non-empty string
-	•	from / to: must follow E.164 format (+ followed by digits)
-	•	ts: ISO-8601 UTC format with Z suffix
-	•	text: optional, maximum 4096 characters
+	-	message_id: must be a non-empty string
+	-	from / to: must follow E.164 format (+ followed by digits)
+	-	ts: ISO-8601 UTC format with Z suffix
+	-	text: optional, maximum 4096 characters
 
-###API Endpoints
+## API Endpoints
 
 - **POST `/webhook`**
   Headers
-	•	X-Signature: HMAC-SHA256 hex digest of the raw request body using WEBHOOK_SECRET
+	-	X-Signature: HMAC-SHA256 hex digest of the raw request body using WEBHOOK_SECRET
 
 Body
-	•	Same as the message schema above
+	-	Same as the message schema above
 
 Response
-	•	200 OK → {"status": "ok"}
-	•	The endpoint is idempotent on message_id
+	-	200 OK → {"status": "ok"}
+	-	The endpoint is idempotent on message_id
 (Duplicate messages are ignored at the database level but still return success)
 
 - **GET `/messages`**
  Query Parameters
-	•	limit (1–100, default: 50)
-	•	offset (default: 0)
-	•	from (optional) – filter by sender
-	•	since (optional) – filter by ts >= since
-	•	q (optional) – substring search in text
+	-	limit (1–100, default: 50)
+  	-	offset (default: 0)
+	-	from (optional) – filter by sender
+	-	since (optional) – filter by ts >= since
+	-	q (optional) – substring search in text
   - **Ordering**
-    	•	Messages are always sorted by:
+    	-	Messages are always sorted by:
             ts ASC, message_id ASC
   - **Response**
           {
@@ -58,57 +61,57 @@ Response
 
 - **GET `/stats`**
       Returns basic analytics:
-    	•	total_messages
-    	•	senders_count
-    	•	messages_per_sender (top 10 senders)
-    	•	first_message_ts
-    	•	last_message_ts
+    	-	total_messages
+    	-	senders_count
+    	-	messages_per_sender (top 10 senders)
+    	-	first_message_ts
+    	-	last_message_ts
 
 - **Health Checks**
-  	•	/health/live
+  	-	/health/live
         Always returns {"status": "ok"} if the service is running.
-	  •	/health/ready
+	-   /health/ready
         Checks that:
-	          •	WEBHOOK_SECRET is set
-	          •	The SQLite database is reachable
+	          -	WEBHOOK_SECRET is set
+	          -	The SQLite database is reachable
 Returns 503 if the service is not ready.
 
 - **Metrics**
- 	•	/metrics
+ 	-	/metrics
         Exposes Prometheus metrics when ENABLE_METRICS=true.
         When disabled, the endpoint returns an empty 404-style response.
 
     Available counters:
-	     •	webhook_requests_total{result="..."}
-	     •	messages_stored_total
+	     -	webhook_requests_total{result="..."}
+	     -	messages_stored_total
 
-### Logging
+## Logging
 
 The service uses structured JSON logging (via app/logging_utils.py) and logs all requests to stdout.
 
 Each request log contains:
-	•	ts (UTC timestamp)
-	•	level
-	•	request_id
-	•	method
-	•	path
-	•	status
-	•	latency_ms
+	-	ts (UTC timestamp)
+	-	level
+	-	request_id
+	-	method
+	-	path
+	-	status
+	-	latency_ms
 
 For /webhook requests, an additional log entry includes:
-	•	message_id
-	•	dup (true if the message was a duplicate)
-	•	result (e.g. ok, invalid_signature, invalid_payload)
+	-	message_id
+	-	dup (true if the message was a duplicate)
+	-	result (e.g. ok, invalid_signature, invalid_payload)
 
-### Configuration
+## Configuration
 
 All configuration is handled through environment variables (see app/config.py):
-	•	WEBHOOK_SECRET – required for HMAC verification
-	•	DATABASE_URL – default: /data/app.db
-	•	LOG_LEVEL – default: INFO
-	•	ENABLE_METRICS – default: true
+	-	WEBHOOK_SECRET – required for HMAC verification
+	-	DATABASE_URL – default: /data/app.db
+	-	LOG_LEVEL – default: INFO
+	-	ENABLE_METRICS – default: true
 
-### SQLite Storage
+## SQLite Storage
 
 - Uses the built-in `sqlite3` module with simple SQL, **no ORM**.
 - Database file path defaults to `/data/app.db`.
@@ -120,7 +123,7 @@ All configuration is handled through environment variables (see app/config.py):
   - `ts` TEXT NOT NULL
   - `text` TEXT NULL
 
-### Running Locally (without Docker)
+## Running Locally (without Docker)
 
 ```bash
 python -m venv .venv
@@ -136,7 +139,7 @@ make run
 
 Service runs at `http://localhost:8000`.
 
-### Running with Docker
+## Running with Docker
 
 ```bash
 export WEBHOOK_SECRET="supersecret"
@@ -146,7 +149,7 @@ docker-compose up --build
 - Service: `http://localhost:8000`.
 - SQLite file is stored in the `app-data` volume at `/data/app.db`.
 
-### Example Webhook Call
+## Example Webhook Call
 
 ```bash
 SECRET="supersecret"
@@ -165,9 +168,9 @@ curl -X POST http://localhost:8000/webhook \
   -d "$BODY"
 ```
 
-### Design Decisions
+## Design Decisions
 
-Here's why I made some of the key choices in this project:
+Below are some key design decisions and the reasoning behind them:
 
 **HMAC Signature Verification**
 
@@ -201,15 +204,15 @@ The total count is also returned so clients can calculate the number of pages.
 **Stats Computation**
 
 The /stats endpoint uses simple SQL queries:
-	•	COUNT(*) for total messages
-	•	COUNT(DISTINCT from_number) for unique senders
-	•	GROUP BY from_number for per-sender counts
-	•	ORDER BY ts for first and last message timestamps
+	-	COUNT(*) for total messages
+	-	COUNT(DISTINCT from_number) for unique senders
+	-	GROUP BY from_number for per-sender counts
+	-	ORDER BY ts for first and last message timestamps
 
 All queries run in a single database connection.
 For large-scale systems, caching could be added later, but this approach is sufficient for the current use case.
 
-### Testing
+## Testing
 
 ```bash
 python -m venv .venv
@@ -219,9 +222,9 @@ pytest -vv
 ```
 
 Tests cover:
-	•	Webhook signature validation
-	•	Message storage
-	•	API responses
-	•	Health checks
+	-	Webhook signature validation
+	-	Message storage
+	-	API responses
+	-	Health checks
 
 
