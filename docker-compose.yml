@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    container_name: lyftr-webhook-service
+    environment:
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-changeme}
+      - DATABASE_URL=/data/app.db
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - app-data:/data
+    ports:
+      - "8000:8000"
+
+volumes:
+  app-data:
+
